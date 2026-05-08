@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学校攀岩队训练签到</title>
+    <style>
+        /* 护眼绿色背景 */
+        body {
+            background-color: #C7EDCC;
+            font-family: "Microsoft YaHei", sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        /* 醒目的大标题 */
+        .main-title {
+            font-size: 3rem;
+            color: #2D5A27;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            font-weight: 800;
+        }
+
+        /* 训练签到外框 */
+        .container {
+            border: 4px solid #5B8C5A;
+            border-radius: 20px;
+            background-color: #f9fff9;
+            padding: 20px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .sub-title {
+            text-align: center;
+            font-size: 1.8rem;
+            color: #3E7E3B;
+            margin-top: 0;
+        }
+
+        /* 功能区域布局 */
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .column {
+            background: #fff;
+            border: 2px dashed #8EB88E;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        h3 { color: #2D5A27; }
+
+        /* 签到按钮样式 */
+        .sign-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .sign-btn:active { transform: scale(0.9); }
+
+        .crown-icon {
+            font-size: 40px;
+            display: block;
+            margin: 5px auto;
+        }
+
+        /* 皇冠墙展示区 */
+        .crown-wall {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            min-height: 100px;
+            margin-top: 10px;
+        }
+
+        /* 控制按钮 */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button.ui-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid #5B8C5A;
+            background: #fff;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button.ui-btn:hover { background: #E8F5E9; }
+
+        .back-btn { background-color: #ffcccb !important; }
+
+        /* 管理员表格 */
+        #admin-panel {
+            margin-top: 30px;
+            width: 100%;
+            display: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th { background-color: #5B8C5A; color: white; }
+    </style>
+</head>
+<body>
+
+    <h1 class="main-title">站起来就有？！</h1>
+
+    <div class="container">
+        <h2 class="sub-title">训练签到</h2>
+        
+        <div style="text-align: center; margin-bottom: 10px;">
+            <input type="text" id="userId" placeholder="输入队员姓名" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+        </div>
+
+        <div class="grid-container">
+            <!-- 攀岩列 -->
+            <div class="column" id="climbing-col">
+                <h3>攀岩</h3>
+                <button class="sign-btn" onclick="addRecord('攀岩')">
+                    <span class="crown-icon">👑</span>
+                    点击签到
+                </button>
+                <div id="climbing-crowns" class="crown-wall"></div>
+            </div>
+
+            <!-- 体训列 -->
+            <div class="column" id="fitness-col">
+                <h3>体训</h3>
+                <button class="sign-btn" onclick="addRecord('体训')">
+                    <span class="crown-icon">👑</span>
+                    点击签到
+                </button>
+                <div id="fitness-crowns" class="crown-wall"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="ui-btn back-btn" onclick="undoLast()">↩ 退回上一步</button>
+            <button class="ui-btn" onclick="toggleAdmin()">管理员视图</button>
+        </div>
+
+        <!-- 管理员数据展示 -->
+        <div id="admin-panel">
+            <h3>所有队员训练统计</h3>
+            <table id="admin-table">
+                <thead>
+                    <tr>
+                        <th>姓名</th>
+                        <th>项目</th>
+                        <th>日期</th>
+                    </tr>
+                </thead>
+                <tbody id="record-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let records = JSON.parse(localStorage.getItem('climbingData')) || [];
+
+        // 初始化显示
+        renderCrowns();
+
+        function addRecord(type) {
+            const name = document.getElementById('userId').value.trim();
+            if (!name) {
+                alert("请输入队员姓名后再签到！");
+                return;
+            }
+
+            const newRecord = {
+                id: Date.now(),
+                user: name,
+                type: type,
+                date: new Date().toLocaleString()
+            };
+
+            records.push(newRecord);
+            saveAndRender();
+        }
+
+        // 退回上一步功能
+        function undoLast() {
+            if (records.length === 0) return;
+            const name = document.getElementById('userId').value.trim();
+            
+            // 找到该用户的最后一条记录并删除
+            const lastIndex = records.map(r => r.user).lastIndexOf(name);
+            if (lastIndex !== -1) {
+                records.splice(lastIndex, 1);
+                saveAndRender();
+            } else {
+                alert("没有找到该用户的近期记录。");
+            }
+        }
+
+        function saveAndRender() {
+            localStorage.setItem('climbingData', JSON.stringify(records));
+            renderCrowns();
+            renderTable();
+        }
+
+        function renderCrowns() {
+            const name = document.getElementById('userId').value.trim();
+            const climbingDiv = document.getElementById('climbing-crowns');
+            const fitnessDiv = document.getElementById('fitness-crowns');
+            
+            climbingDiv.innerHTML = '';
+            fitnessDiv.innerHTML = '';
+
+            // 过滤出当前ID的皇冠
+            records.filter(r => r.user === name).forEach(r => {
+                const crown = document.createElement('span');
+                crown.innerHTML = '👑';
+                crown.title = r.date;
+                if (r.type === '攀岩') climbingDiv.appendChild(crown);
+                else fitnessDiv.appendChild(crown);
+            });
+        }
+
+        function renderTable() {
+            const body = document.getElementById('record-body');
+            body.innerHTML = '';
+            records.forEach(r => {
+                const row = `<tr><td>${r.user}</td><td>${r.type}</td><td>${r.date}</td></tr>`;
+                body.innerHTML += row;
+            });
+        }
+
+        function toggleAdmin() {
+            const panel = document.getElementById('admin-panel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            renderTable();
+        }
+
+        // 监听姓名输入，实时切换显示的皇冠
+        document.getElementById('userId').addEventListener('input', renderCrowns);
+    </script>
+</body>
+</html>
